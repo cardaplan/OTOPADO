@@ -10,15 +10,13 @@
 	<link rel="stylesheet" href="/css/styles.css">
 	<!--
 		Painel do Entregador (Mobile-first)
-		- Busca por ID do pedido
-		- Exibe status atual
-		- Seleção por botões grandes com ícones
-		- Botão Salvar com animação
-		- Animação de sucesso (fade in/out)
-		- Pronto para backend real via dataService.js
+		- Listagem de pedidos com aceite
+		- Busca por ID e histórico
+		- Seleção por botões grandes com ícones e atualização em tempo real
 	-->
+<script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body>
+<body class="bg-futuristic">
 	<header class="header-bar">
 		<div class="container header-inner">
 			<div class="header-left">
@@ -32,15 +30,16 @@
 	</header>
 
 	<main class="container" style="padding-top:84px;">
+		<!-- Busca rápida por ID -->
 		<section class="status-card panel-card" style="overflow:hidden;">
-			<label for="order-id" style="font-weight:700;">ID do pedido</label>
+			<label for="order-id" style="font-weight:700;">Buscar por ID</label>
 			<div class="search-row">
 				<input id="order-id" class="input" placeholder="Ex.: 250101-ABCD" inputmode="text" autocomplete="off" />
 				<button id="load-btn" class="btn">Buscar</button>
 			</div>
 
 			<div class="current-status">
-				<span class="muted">Status atual:</span>
+				<span class="muted">Status:</span>
 				<span id="current-status-badge" class="status-badge">—</span>
 			</div>
 
@@ -50,29 +49,67 @@
 				<button class="status-btn status-rota" data-status="rota">🚗<span>Saiu para entrega</span></button>
 				<button class="status-btn status-entregue" data-status="entregue">✅<span>Entregue</span></button>
 			</div>
-
 			<button id="save-btn" class="btn btn-primary save-btn">Salvar</button>
-
 			<div id="feedback" class="subtle-text" style="margin-top:12px;">—</div>
+		</section>
+
+		<!-- Pedidos disponíveis / aceitação -->
+		<section class="status-card" style="margin-top:16px;">
+			<div class="status-row" style="justify-content:space-between;">
+				<div class="status-title">Pedidos Disponíveis</div>
+				<button id="refresh-list" class="btn">Atualizar lista</button>
+			</div>
+			<div id="orders-list" class="orders-list"></div>
+		</section>
+
+		<!-- Histórico -->
+		<section class="status-card" style="margin-top:16px;">
+			<div class="status-row" style="justify-content:space-between;">
+				<div class="status-title">Histórico</div>
+			</div>
+			<div id="history-list" class="orders-list"></div>
 		</section>
 	</main>
 
 	<div id="success-toast" class="success-toast" aria-hidden="true">✅</div>
 
+	<!-- Modal de atualização de status após aceitar pedido -->
+	<div id="status-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-hidden="true">
+		<div class="modal">
+			<div class="modal-header">
+				<div class="modal-title">Atualizar Status</div>
+				<button id="modal-close" class="btn">✕</button>
+			</div>
+			<div class="modal-body">
+				<div class="subtle-text" id="modal-order-id">Pedido: —</div>
+				<div class="status-grid" style="margin-top:10px;">
+					<button class="status-btn" data-modal-status="confirmado">📦<span>Pedido confirmado</span></button>
+					<button class="status-btn" data-modal-status="preparacao">👨‍🍳<span>Em preparação</span></button>
+					<button class="status-btn" data-modal-status="rota">🚗<span>Saiu para entrega</span></button>
+					<button class="status-btn" data-modal-status="entregue">✅<span>Entregue</span></button>
+				</div>
+			</div>
+			<div class="modal-footer">
+				<button id="modal-cancel" class="btn">Cancelar</button>
+				<button id="modal-save" class="btn btn-primary">Salvar</button>
+			</div>
+		</div>
+	</div>
+
 	<script src="/js/dataService.js"></script>
 	<script>
 	let selectedStatus = '';
+	const DELIVERER_ID = 'deliverer-1'; // placeholder; em produção, viria de autenticação
+
+	function formatCurrencyBRL(v){
+		try{ return v.toLocaleString('pt-BR', { style:'currency', currency:'BRL' }); }catch(e){ return 'R$ ' + Number(v||0).toFixed(2); }
+	}
+	function shortPhone(p){ return p ? `+${p}` : '—'; }
 
 	function badgeFor(status){
-		const map = {
-			confirmado: '📦 Pedido confirmado',
-			preparacao: '👨‍🍳 Em preparação',
-			rota: '🚗 Saiu para entrega',
-			entregue: '✅ Entregue'
-		};
+		const map = { confirmado:'📦 Pedido confirmado', preparacao:'👨‍🍳 Em preparação', rota:'🚗 Saiu para entrega', entregue:'✅ Entregue' };
 		return map[status] || '—';
 	}
-
 	function applyBadge(el, status){
 		el.textContent = badgeFor(status);
 		el.className = 'status-badge';
@@ -84,20 +121,14 @@
 	async function loadStatus(){
 		const id = document.getElementById('order-id').value.trim();
 		const feedback = document.getElementById('feedback');
-		if(!id){
-			feedback.textContent = 'Informe o ID do pedido.';
-			return;
-		}
+		if(!id){ feedback.textContent = 'Informe o ID do pedido.'; return; }
 		try{
 			const data = await window.dataService.getOrderStatus(id);
 			const status = data?.status || 'confirmado';
 			applyBadge(document.getElementById('current-status-badge'), status);
-			selectedStatus = status; // pré-seleciona
-			highlightSelected(status);
+			selectedStatus = status; highlightSelected(status);
 			feedback.textContent = 'Status carregado.';
-		}catch(e){
-			feedback.textContent = 'Falha ao carregar.';
-		}
+		}catch(e){ feedback.textContent = 'Falha ao carregar.'; }
 	}
 
 	function highlightSelected(status){
@@ -109,10 +140,7 @@
 	document.getElementById('load-btn').addEventListener('click', loadStatus);
 	document.getElementById('order-id').addEventListener('keydown', (e)=>{ if(e.key==='Enter'){ loadStatus(); }});
 	document.querySelectorAll('.status-btn').forEach(btn => {
-		btn.addEventListener('click', () => {
-			selectedStatus = btn.getAttribute('data-status');
-			highlightSelected(selectedStatus);
-		});
+		btn.addEventListener('click', () => { selectedStatus = btn.getAttribute('data-status'); highlightSelected(selectedStatus); });
 	});
 
 	document.getElementById('save-btn').addEventListener('click', async () => {
@@ -125,20 +153,121 @@
 			applyBadge(document.getElementById('current-status-badge'), selectedStatus);
 			showSuccess();
 			feedback.textContent = 'Status atualizado com sucesso!';
-		} catch(e){
-			feedback.textContent = 'Falha ao atualizar: ' + e.message;
-		}
+		} catch(e){ feedback.textContent = 'Falha ao atualizar: ' + e.message; }
 	});
 
 	function showSuccess(){
 		const toast = document.getElementById('success-toast');
-		toast.setAttribute('aria-hidden','false');
-		toast.classList.add('show');
-		setTimeout(()=>{
-			toast.classList.remove('show');
-			toast.setAttribute('aria-hidden','true');
-		}, 1500);
+		toast.setAttribute('aria-hidden','false'); toast.classList.add('show');
+		setTimeout(()=>{ toast.classList.remove('show'); toast.setAttribute('aria-hidden','true'); }, 1500);
 	}
+
+	function orderCard(o){
+		const accepted = !!o.acceptedBy;
+		return `
+			<div class="order-card ${accepted ? 'order-card-accepted' : ''}">
+				<div class="order-main">
+					<div class="order-top">
+						<div class="order-id">#${o.id}</div>
+						<div class="order-amount">${formatCurrencyBRL(o.amount)}</div>
+					</div>
+					<div class="order-meta">
+						<div><strong>${o.customerName}</strong> • ${shortPhone(o.customerPhone)}</div>
+						<div>Retirada: ${o.pickupAddress || '—'}</div>
+						<div>Entrega: ${o.deliveryAddress || '—'}</div>
+					</div>
+				</div>
+				<div class="order-actions">
+					${accepted ? `<span class="accepted-badge">Aceito</span>` : `<button class="btn btn-primary accept-btn" data-id="${o.id}">Aceitar</button>`}
+				</div>
+			</div>
+		`;
+	}
+
+	async function renderOrders(){
+		const listEl = document.getElementById('orders-list');
+		const histEl = document.getElementById('history-list');
+		const orders = await window.dataService.listOrders();
+		// separar por data (hoje e anteriores)
+		const today = new Date(); today.setHours(0,0,0,0);
+		const todayOrders = orders.filter(o => new Date(o.createdAt) >= today);
+		const oldOrders = orders.filter(o => new Date(o.createdAt) < today);
+		listEl.innerHTML = todayOrders.map(orderCard).join('') || '<div class="subtle-text">Sem pedidos no momento</div>';
+		histEl.innerHTML = oldOrders.map(orderCard).join('') || '<div class="subtle-text">Sem histórico</div>';
+		// binds de aceitar
+		listEl.querySelectorAll('.accept-btn').forEach(btn => {
+			btn.addEventListener('click', async () => {
+				const id = btn.getAttribute('data-id');
+				try{
+					await window.dataService.acceptOrder(id, DELIVERER_ID);
+					showSuccess();
+					renderOrders();
+					openStatusModal(id);
+				} catch(e){ alert(e.message); }
+			});
+		});
+	}
+
+	document.getElementById('refresh-list').addEventListener('click', renderOrders);
+
+	// Listener de eventos (simula WebSocket) para atualizar listas automaticamente
+	window.addEventListener('storage', (ev) => {
+		if(ev.key === 'orders_event'){
+			renderOrders();
+		}
+	});
+
+	// Seed demo e render inicial
+	window.dataService.seedDemoOrdersIfEmpty();
+	renderOrders();
+
+	// ===== Modal =====
+	let modalOrderId = null;
+	let modalSelectedStatus = '';
+
+	function openStatusModal(orderId){
+		modalOrderId = orderId;
+		document.getElementById('modal-order-id').textContent = `Pedido: #${orderId}`;
+		// limpar seleção prévia
+		document.querySelectorAll('[data-modal-status]').forEach(btn=> btn.classList.remove('selected'));
+		modalSelectedStatus = '';
+		const overlay = document.getElementById('status-modal');
+		overlay.classList.add('show');
+		overlay.setAttribute('aria-hidden','false');
+	}
+
+	function closeStatusModal(){
+		const overlay = document.getElementById('status-modal');
+		overlay.classList.remove('show');
+		overlay.setAttribute('aria-hidden','true');
+		modalOrderId = null;
+		modalSelectedStatus = '';
+	}
+
+	document.getElementById('modal-close').addEventListener('click', closeStatusModal);
+	document.getElementById('modal-cancel').addEventListener('click', closeStatusModal);
+	document.querySelectorAll('[data-modal-status]').forEach(btn => {
+		btn.addEventListener('click', ()=>{
+			modalSelectedStatus = btn.getAttribute('data-modal-status');
+			document.querySelectorAll('[data-modal-status]').forEach(b=> b.classList.remove('selected'));
+			btn.classList.add('selected');
+		});
+	});
+
+	document.getElementById('modal-save').addEventListener('click', async ()=>{
+		if(!modalOrderId || !modalSelectedStatus){ closeStatusModal(); return; }
+		try{
+			await window.dataService.updateOrderStatus(modalOrderId, modalSelectedStatus);
+			showSuccess();
+			closeStatusModal();
+			// Se o ID buscado for o mesmo, refletir
+			if(document.getElementById('order-id').value.trim() === modalOrderId){
+				applyBadge(document.getElementById('current-status-badge'), modalSelectedStatus);
+				highlightSelected(modalSelectedStatus);
+			}
+			renderOrders();
+		}catch(e){ alert('Falha ao atualizar status: ' + e.message); }
+	});
 	</script>
 </body>
 </html>

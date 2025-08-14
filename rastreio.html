@@ -10,15 +10,16 @@
 	<link rel="stylesheet" href="/css/styles.css">
 	<!--
 		Rastreamento do Pedido (Cliente)
-		- Linha do tempo horizontal com 5 etapas
+		- Linha do tempo vertical com 5 etapas
 		- Ponto piscante no status atual (animação @keyframes blink)
-		- Barra de progresso animada entre etapas
+		- Transições animadas
 		- Layout responsivo com Flex/Grid
-		- Atualização automática a cada 5s
+		- Atualização automática e listener de "tempo real" (localStorage event)
 		- Pronto para backend real via dataService.js (localStorage por enquanto)
 	-->
+<script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body>
+<body class="bg-futuristic">
 	<header class="header-bar">
 		<div class="container header-inner">
 			<div class="header-left">
@@ -42,31 +43,44 @@
 				<button id="refresh-btn" class="btn" title="Atualizar agora">⟳ Atualizar</button>
 			</div>
 
-			<!-- Linha do tempo -->
-			<div class="timeline">
-				<div class="timeline-track"></div>
-				<div id="timeline-progress" class="timeline-progress"></div>
-				<div id="timeline-indicator" class="timeline-indicator blinking"></div>
-				<div class="timeline-steps">
-					<div class="timeline-step" data-step="0">
-						<div class="step-icon">🕒</div>
-						<div class="step-label">Pedido criado</div>
+			<!-- Timeline Vertical -->
+			<div class="v-timeline">
+				<div class="v-line"></div>
+				<div id="v-indicator" class="v-indicator blinking"></div>
+
+				<div class="v-step" data-step="0">
+					<div class="v-dot">🕒</div>
+					<div class="v-meta">
+						<div class="v-title">Pedido criado</div>
+						<div class="v-chip v-chip-gray">Aguardando</div>
 					</div>
-					<div class="timeline-step" data-step="1">
-						<div class="step-icon">📦</div>
-						<div class="step-label">Pedido confirmado</div>
+				</div>
+				<div class="v-step" data-step="1">
+					<div class="v-dot">📦</div>
+					<div class="v-meta">
+						<div class="v-title">Pedido confirmado</div>
+						<div class="v-chip v-chip-indigo">Confirmado</div>
 					</div>
-					<div class="timeline-step" data-step="2">
-						<div class="step-icon">👨‍🍳</div>
-						<div class="step-label">Em preparação</div>
+				</div>
+				<div class="v-step" data-step="2">
+					<div class="v-dot">👨‍🍳</div>
+					<div class="v-meta">
+						<div class="v-title">Em preparação</div>
+						<div class="v-chip v-chip-orange">Preparando</div>
 					</div>
-					<div class="timeline-step" data-step="3">
-						<div class="step-icon">🚗</div>
-						<div class="step-label">Saiu para entrega</div>
+				</div>
+				<div class="v-step" data-step="3">
+					<div class="v-dot">🚗</div>
+					<div class="v-meta">
+						<div class="v-title">Saiu para entrega</div>
+						<div class="v-chip v-chip-blue">A caminho</div>
 					</div>
-					<div class="timeline-step" data-step="4">
-						<div class="step-icon">✅</div>
-						<div class="step-label">Entregue</div>
+				</div>
+				<div class="v-step" data-step="4">
+					<div class="v-dot">✅</div>
+					<div class="v-meta">
+						<div class="v-title">Entregue</div>
+						<div class="v-chip v-chip-green">Concluído</div>
 					</div>
 				</div>
 			</div>
@@ -78,11 +92,10 @@
 	<script src="/js/dataService.js"></script>
 	<script src="/js/script.js"></script>
 	<script>
-	// Mapeamento de status → índice da linha do tempo
 	const STEP_IDS = ['criado','confirmado','preparacao','rota','entregue'];
 	const STEP_COLORS = {
-		criado: '#9CA3AF', // cinza
-		confirmado: '#6366F1', // indigo (neutro elegante)
+		criado: '#9CA3AF',
+		confirmado: '#6366F1',
 		preparacao: getComputedStyle(document.documentElement).getPropertyValue('--status-laranja').trim() || '#ff8c00',
 		rota: getComputedStyle(document.documentElement).getPropertyValue('--status-azul').trim() || '#2d89ef',
 		entregue: getComputedStyle(document.documentElement).getPropertyValue('--status-verde').trim() || '#22c55e'
@@ -97,12 +110,8 @@
 			case 'preparacao': return 2;
 			case 'rota': return 3;
 			case 'entregue': return 4;
-			default: return 0; // criado
+			default: return 0;
 		}
-	}
-
-	function indexToStatus(idx){
-		return STEP_IDS[idx] || 'criado';
 	}
 
 	function labelForStatus(status){
@@ -116,24 +125,20 @@
 		return map[status] || '—';
 	}
 
-	function applyTimeline(index){
+	function applyVerticalTimeline(index){
+		const indicator = document.getElementById('v-indicator');
+		const steps = document.querySelectorAll('.v-step');
+		const container = document.querySelector('.v-timeline');
 		const total = STEP_IDS.length - 1;
-		const percent = Math.max(0, Math.min(100, (index/total)*100));
-		const currentStatus = indexToStatus(index);
+		const stepPercent = 100 / total;
+		const topPercent = Math.max(0, Math.min(100, index * stepPercent));
+		const currentStatus = STEP_IDS[index] || 'criado';
 		const color = STEP_COLORS[currentStatus] || '#111827';
-
-		const progress = document.getElementById('timeline-progress');
-		const indicator = document.getElementById('timeline-indicator');
-		progress.style.width = percent + '%';
-		progress.style.background = color;
-		indicator.style.left = percent + '%';
+		indicator.style.top = `calc(${topPercent}% + 24px)`;
 		indicator.style.background = color;
-
-		// Atualizar classes das etapas
-		document.querySelectorAll('.timeline-step').forEach((el) => {
-			const stepIdx = Number(el.getAttribute('data-step'));
-			el.classList.toggle('completed', stepIdx < index);
-			el.classList.toggle('current', stepIdx === index);
+		steps.forEach((el, idx) => {
+			el.classList.toggle('completed', idx < index);
+			el.classList.toggle('current', idx === index);
 		});
 	}
 
@@ -150,24 +155,33 @@
 		try{
 			if(!orderId){
 				updateStatusLabel('criado');
-				applyTimeline(0);
+				applyVerticalTimeline(0);
 				document.getElementById('last-updated').textContent = 'ID de pedido não informado.';
 				return;
 			}
 			const data = await window.dataService.getOrderStatus(orderId);
 			const status = data?.status || 'confirmado';
 			const idx = statusToIndex(status);
-			applyTimeline(idx);
+			applyVerticalTimeline(idx);
 			updateStatusLabel(status);
 			document.getElementById('last-updated').textContent = 'Atualizado em ' + new Date().toLocaleTimeString();
-		}catch(e){
-			console.error(e);
-		}
+		}catch(e){ console.error(e); }
 	}
+
+	// Listener "tempo real" via localStorage events (simula WebSocket)
+	window.addEventListener('storage', (ev) => {
+		if(ev.key === 'orders_event'){
+			try{
+				const payload = JSON.parse(ev.newValue || '{}');
+				if(payload?.event === 'status_updated' && payload?.payload?.id === orderId){
+					refresh();
+				}
+			}catch(e){}
+		}
+	});
 
 	document.getElementById('refresh-btn').addEventListener('click', refresh);
 	refresh();
-	setInterval(refresh, 5000);
 	</script>
 </body>
 </html>
