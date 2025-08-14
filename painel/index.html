@@ -147,6 +147,10 @@
 		const feedback = document.getElementById('feedback');
 		if(!id){ feedback.textContent = 'Informe o ID do pedido.'; return; }
 		if(!selectedStatus){ feedback.textContent = 'Selecione um status.'; return; }
+		if(!window.dataService || typeof window.dataService.updateOrderStatus !== 'function'){
+			feedback.textContent = 'Falha ao atualizar: serviço de dados não carregado.';
+			return;
+		}
 		try{
 			await window.dataService.updateOrderStatus(id, selectedStatus);
 			applyBadge(document.getElementById('current-status-badge'), selectedStatus);
