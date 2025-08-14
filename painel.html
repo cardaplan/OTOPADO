@@ -7,7 +7,7 @@
 	<link rel="preconnect" href="https://fonts.googleapis.com">
 	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 	<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
-	<link rel="stylesheet" href="/css/styles.css">
+	<link rel="stylesheet" href="./css/styles.css">
 	<script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-futuristic">
@@ -49,15 +49,11 @@
 
 		<section class="status-card" style="margin-top:16px;">
 			<div class="status-row" style="justify-content:space-between;">
-				<div class="status-title">Pedidos Disponíveis</div>
-				<button id="refresh-list" class="btn">Atualizar lista</button>
-			</div>
-			<div id="orders-list" class="orders-list"></div>
-		</section>
-
-		<section class="status-card" style="margin-top:16px;">
-			<div class="status-row" style="justify-content:space-between;">
-				<div class="status-title">Histórico</div>
+				<div class="status-title">Histórico de Entregas</div>
+				<div class="search-row">
+					<input id="history-search" class="input" placeholder="Buscar ID no histórico" />
+					<button id="history-search-btn" class="btn">Pesquisar</button>
+				</div>
 			</div>
 			<div id="history-list" class="orders-list"></div>
 		</section>
@@ -87,7 +83,7 @@
 		</div>
 	</div>
 
-	<script src="/js/dataService.js"></script>
+	<script src="./js/dataService.js"></script>
 	<script>
 	let selectedStatus = '';
 	const DELIVERER_ID = 'deliverer-1';
@@ -104,9 +100,9 @@
 	document.querySelectorAll('.status-btn').forEach(b=>{ b.addEventListener('click', ()=>{ selectedStatus=b.getAttribute('data-status'); highlightSelected(selectedStatus); });});
 	document.getElementById('save-btn').addEventListener('click', async ()=>{ const id=document.getElementById('order-id').value.trim(); const fb=document.getElementById('feedback'); if(!id){ fb.textContent='Informe o ID do pedido.'; return; } if(!selectedStatus){ fb.textContent='Selecione um status.'; return; } try{ await window.dataService.updateOrderStatus(id, selectedStatus); applyBadge(document.getElementById('current-status-badge'), selectedStatus); showSuccess(); fb.textContent='Status atualizado com sucesso!'; }catch(e){ fb.textContent='Falha ao atualizar: '+e.message; } });
 	function showSuccess(){ const t=document.getElementById('success-toast'); t.setAttribute('aria-hidden','false'); t.classList.add('show'); setTimeout(()=>{ t.classList.remove('show'); t.setAttribute('aria-hidden','true'); }, 1500); }
-	function orderCard(o){ const accepted=!!o.acceptedBy; return `<div class="order-card ${accepted?'order-card-accepted':''}"><div class="order-main"><div class="order-top"><div class="order-id">#${o.id}</div><div class="order-amount">${formatCurrencyBRL(o.amount)}</div></div><div class="order-meta"><div><strong>${o.customerName}</strong> • ${shortPhone(o.customerPhone)}</div><div>Retirada: ${o.pickupAddress||'—'}</div><div>Entrega: ${o.deliveryAddress||'—'}</div></div></div><div class="order-actions">${accepted?`<span class="accepted-badge">Aceito</span>`:`<button class="btn btn-primary accept-btn" data-id="${o.id}">Aceitar</button>`}</div></div>`; }
-	async function renderOrders(){ const list=document.getElementById('orders-list'); const hist=document.getElementById('history-list'); const orders=await window.dataService.listOrders(); const today=new Date(); today.setHours(0,0,0,0); const todays=orders.filter(o=>new Date(o.createdAt)>=today); const olds=orders.filter(o=>new Date(o.createdAt)<today); list.innerHTML=todays.map(orderCard).join('')||'<div class="subtle-text">Sem pedidos no momento</div>'; hist.innerHTML=olds.map(orderCard).join('')||'<div class="subtle-text">Sem histórico</div>'; list.querySelectorAll('.accept-btn').forEach(btn=>{ btn.addEventListener('click', async()=>{ const id=btn.getAttribute('data-id'); try{ await window.dataService.acceptOrder(id, DELIVERER_ID); showSuccess(); renderOrders(); openStatusModal(id);}catch(e){ alert(e.message);} });}); }
-	document.getElementById('refresh-list').addEventListener('click', renderOrders);
+	function orderCard(o){ const accepted=!!o.acceptedBy; return `<div class="order-card ${accepted?'order-card-accepted':''}"><div class="order-main"><div class="order-top"><div class="order-id">#${o.id}</div><div class="order-amount">${formatCurrencyBRL(o.amount)}</div></div><div class="order-meta"><div><strong>${o.customerName}</strong> • ${shortPhone(o.customerPhone)}</div><div>Retirada: ${o.pickupAddress||'—'}</div><div>Entrega: ${o.deliveryAddress||'—'}</div></div></div><div class="order-actions">${accepted?`<span class="accepted-badge">Aceito</span>`:''}</div></div>`; }
+	async function renderOrders(){ const hist=document.getElementById('history-list'); const orders=await window.dataService.listOrders(); const delivered=orders.filter(o=>!!o.deliveredAt); hist.innerHTML=delivered.map(orderCard).join('')||'<div class="subtle-text">Sem histórico</div>'; }
+	document.getElementById('history-search-btn').addEventListener('click', ()=>{ const q=(document.getElementById('history-search').value||'').trim().toLowerCase(); const hist=document.getElementById('history-list'); if(!q){ renderOrders(); return; } Array.from(hist.children).forEach(n=>{ n.style.display = n.textContent.toLowerCase().includes(q)?'':''; }); });
 	window.addEventListener('storage', (ev)=>{ if(ev.key==='orders_event'){ renderOrders(); } });
 	window.dataService.seedDemoOrdersIfEmpty(); renderOrders();
 
