@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>Painel do Entregador</title>
+	<link rel="stylesheet" href="/css/styles.css">
+	<!-- Painel do Entregador
+		Permite digitar ID do pedido e escolher o status.
+		Atualiza o "banco" simulado (localStorage) via dataService.js.
+		Para backend real, trocar a gravação por fetch() (POST/PUT). -->
+</head>
+<body>
+	<div class="container">
+		<header class="header">
+			<h1>🛠️ Painel do Entregador</h1>
+			<a class="btn" href="/">Voltar ao cardápio</a>
+		</header>
+
+		<section class="status-card panel-card">
+			<label for="order-id" style="font-weight:700;">ID do pedido</label>
+			<input id="order-id" class="input" placeholder="Ex.: 250101-ABCD" />
+
+			<div style="height:12px"></div>
+
+			<label for="order-status" style="font-weight:700;">Status</label>
+			<select id="order-status" class="input">
+				<option value="confirmado">📦 Pedido confirmado</option>
+				<option value="preparacao">👨‍🍳 Em preparação</option>
+				<option value="rota">🚗💨 Saiu para entrega</option>
+				<option value="entregue">✅ Entregue</option>
+			</select>
+
+			<div style="height:16px"></div>
+			<button id="save-btn" class="btn btn-primary">Salvar</button>
+
+			<p id="feedback" style="margin-top:12px; color:#6b7280;"></p>
+		</section>
+	</div>
+
+	<script src="/js/dataService.js"></script>
+	<script>
+	document.getElementById('save-btn').addEventListener('click', async () => {
+		const id = document.getElementById('order-id').value.trim();
+		const status = document.getElementById('order-status').value;
+		const feedback = document.getElementById('feedback');
+		if(!id){
+			feedback.textContent = 'Informe o ID do pedido.';
+			return;
+		}
+		try {
+			// SIMULAÇÃO: grava via localStorage
+			// Trocar por chamada de API quando disponível (ver dataService.js)
+			await window.dataService.updateOrderStatus(id, status);
+			feedback.textContent = 'Status atualizado com sucesso!';
+		} catch(err){
+			feedback.textContent = 'Falha ao atualizar: ' + err.message;
+		}
+	});
+	</script>
+</body>
+</html>

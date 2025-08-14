@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>Rastreio do Pedido</title>
+	<link rel="stylesheet" href="/css/styles.css">
+	<!-- Página de Rastreio do Cliente
+		Mostra status do pedido em 4 etapas + barra de progresso.
+		Busca dados de um "banco" simulado (localStorage) via dataService.js.
+		Trocar localStorage por API real quando disponível (ver comentários em dataService.js). -->
+</head>
+<body>
+	<div class="container">
+		<header class="header">
+			<h1>📦 Rastreio do Pedido</h1>
+			<a class="btn" href="/">Voltar ao cardápio</a>
+		</header>
+
+		<section class="status-card" id="tracking-card" style="margin-top:16px;">
+			<div class="status-row">
+				<div>
+					<div class="status-title">Pedido <span id="order-id">...</span></div>
+					<div id="status-friendly" class="status-badge badge-confirmado">Carregando status...</div>
+				</div>
+				<button id="refresh-btn" class="btn" title="Atualizar agora">⟳ Atualizar</button>
+			</div>
+
+			<div class="progress" style="margin-top:14px;">
+				<div class="step"><div class="fill" id="p1"></div></div>
+				<div class="step"><div class="fill" id="p2"></div></div>
+				<div class="step"><div class="fill" id="p3"></div></div>
+				<div class="step"><div class="fill" id="p4"></div></div>
+			</div>
+
+			<div class="steps-legend">
+				<div id="l1" class="legend-item">📦 Pedido confirmado</div>
+				<div id="l2" class="legend-item">👨‍🍳 Em preparação</div>
+				<div id="l3" class="legend-item">🚗💨 Saiu para entrega</div>
+				<div id="l4" class="legend-item">✅ Entregue</div>
+			</div>
+		</section>
+
+		<p style="margin-top:16px; color:#6b7280;">
+			Esta página atualiza automaticamente a cada 5 segundos para simular tempo real.
+		</p>
+	</div>
+
+	<script src="/js/dataService.js"></script>
+	<script src="/js/script.js"></script>
+	<script>
+	// Capturar ID do pedido da URL
+	const orderId = trackingUtils.getQueryParam('id');
+	document.getElementById('order-id').textContent = orderId || '—';
+
+	const fills = [
+		document.getElementById('p1'),
+		document.getElementById('p2'),
+		document.getElementById('p3'),
+		document.getElementById('p4')
+	];
+	const legends = [
+		document.getElementById('l1'),
+		document.getElementById('l2'),
+		document.getElementById('l3'),
+		document.getElementById('l4')
+	];
+
+	const statusMap = {
+		confirmado: { idx: 1, label: '📦 Pedido confirmado', badgeClass: 'badge-confirmado', color: getComputedStyle(document.documentElement).getPropertyValue('--status-azul') },
+		preparacao: { idx: 2, label: '👨‍🍳 Em preparação', badgeClass: 'badge-preparacao', color: getComputedStyle(document.documentElement).getPropertyValue('--status-laranja') },
+		rota:       { idx: 3, label: '🚗💨 Saiu para entrega', badgeClass: 'badge-rota', color: getComputedStyle(document.documentElement).getPropertyValue('--status-amarelo') },
+		entregue:   { idx: 4, label: '✅ Entregue', badgeClass: 'badge-entregue', color: getComputedStyle(document.documentElement).getPropertyValue('--status-verde') }
+	};
+
+	function resetProgress(){
+		fills.forEach(f => { f.style.width = '0%'; f.style.background = '#e5e7eb'; });
+		legends.forEach(l => l.classList.remove('active'));
+	}
+
+	function applyStatusProgress(status){
+		resetProgress();
+		const meta = statusMap[status] || statusMap.confirmado;
+		const stepsFilled = meta.idx;
+		for(let i=0;i<stepsFilled;i++){
+			fills[i].style.width = '100%';
+			fills[i].style.background = meta.color || '#111827';
+			legends[i].classList.add('active');
+		}
+		const statusEl = document.getElementById('status-friendly');
+		statusEl.textContent = meta.label;
+		statusEl.className = 'status-badge ' + meta.badgeClass;
+	}
+
+	async function refresh(){
+		if(!orderId){
+			document.getElementById('status-friendly').textContent = 'ID de pedido não informado.';
+			return;
+		}
+		try{
+			// SIMULAÇÃO: leitura via localStorage
+			// Trocar por chamada de API quando disponível (ver dataService.js)
+			const data = await window.dataService.getOrderStatus(orderId);
+			if(!data){
+				applyStatusProgress('confirmado');
+				return;
+			}
+			applyStatusProgress(data.status);
+		}catch(err){
+			console.error(err);
+		}
+	}
+
+	document.getElementById('refresh-btn').addEventListener('click', refresh);
+	refresh();
+	setInterval(refresh, 5000);
+	</script>
+</body>
+</html>

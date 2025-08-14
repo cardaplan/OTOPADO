@@ -1,0 +1,60 @@
+/* styles.css - Estilos compartilhados do protótipo de rastreio */
+
+:root{
+	--status-azul:#2d89ef;      /* confirmado */
+	--status-laranja:#ff8c00;   /* preparação */
+	--status-amarelo:#ffd43b;   /* rota */
+	--status-verde:#22c55e;     /* entregue */
+	--cinza:#e5e7eb;
+	--cinza-escuro:#6b7280;
+}
+
+/* Layout básico responsivo */
+body{
+	font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+	margin:0; padding:0; color:#111827; background:#fff;
+}
+.container{
+	max-width: 960px; margin: 0 auto; padding: 16px;
+}
+.header{
+	display:flex; align-items:center; justify-content:space-between; padding:12px 0; border-bottom:1px solid var(--cinza);
+}
+.header h1{ font-size: 1.1rem; margin:0; }
+
+/* Cartão de status */
+.status-card{ border:1px solid var(--cinza); border-radius:12px; padding:16px; background:#fff; box-shadow: 0 2px 8px rgba(0,0,0,.04); }
+.status-row{ display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap: wrap; }
+.status-title{ font-weight:700; font-size:1rem; }
+.status-badge{ font-weight:700; }
+
+/* Barra de progresso com 4 etapas */
+.progress{
+	display:flex; align-items:center; gap:8px; margin-top:12px;
+}
+.progress .step{
+	flex:1; height:8px; background:var(--cinza); border-radius:9999px; position:relative; overflow:hidden;
+}
+.progress .step .fill{
+	position:absolute; left:0; top:0; bottom:0; width:0%; background:var(--status-azul); transition: width .6s ease;
+}
+
+/* Legendas de etapas */
+.steps-legend{ display:grid; grid-template-columns: repeat(4, 1fr); gap:8px; margin-top:8px; font-size:.9rem; }
+.legend-item{ display:flex; align-items:center; gap:6px; color:var(--cinza-escuro); }
+.legend-item.active{ font-weight:700; color:#111827; }
+
+/* Botões básicos */
+.btn{ display:inline-flex; align-items:center; justify-content:center; padding:10px 14px; border-radius:10px; border:1px solid var(--cinza); background:#fff; cursor:pointer; transition:.2s; font-weight:600; }
+.btn:hover{ transform: translateY(-1px); box-shadow:0 6px 18px rgba(0,0,0,.06); }
+.btn-primary{ background:#111827; color:#fff; border-color:#111827; }
+
+/* Cores por status */
+.badge-confirmado{ color: var(--status-azul); }
+.badge-preparacao{ color: var(--status-laranja); }
+.badge-rota{ color: #b45309; }
+.badge-entregue{ color: var(--status-verde); }
+
+/* Painel */
+.panel-card{ max-width:560px; margin:24px auto; }
+.input{ width:100%; padding:10px 12px; border:1px solid var(--cinza); border-radius:10px; }

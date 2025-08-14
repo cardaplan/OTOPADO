@@ -858,6 +858,13 @@
                 </a>-->
             </div>
 
+            <!-- Rastreio de Pedido -->
+            <div id="footer-tracking-container" class="text-center mt-2" style="font-size: 0.85rem;">
+                <a id="footer-tracking" href="#" style="text-decoration: none; color: var(--cor-primaria); display: none;"
+                   onmouseover="this.style.textDecoration='underline'"
+                   onmouseout="this.style.textDecoration='none'">📦 Rastrear pedido</a>
+            </div>
+
              <!-- Developer Credits -->
              <div id="footer-credits-container" class="border-t pt-6 text-center" style="border-color: rgba(200, 200, 200, 0.3) !important; margin-top: 2rem; padding-top: 1.5rem;">
                 <p id="footer-credits" class="text-xs" style="color: var(--cor-texto-secundario) !important; font-weight: 300; opacity: 0.7; font-size: 0.75rem;">
@@ -2143,6 +2150,24 @@
             } else if (footerWhatsappElement) {
                 footerWhatsappElement.style.display = 'none';
             }
+
+            // Rastreio no rodapé (link com último pedido)
+            try {
+                const trackingLink = document.getElementById('footer-tracking');
+                if (trackingLink) {
+                    if (typeof rastreioAtivo !== 'undefined' && rastreioAtivo === true) {
+                        const lastId = localStorage.getItem('last_order_id');
+                        if (lastId) {
+                            trackingLink.href = `/rastreio.html?id=${encodeURIComponent(lastId)}`;
+                            trackingLink.style.display = 'inline';
+                        } else {
+                            trackingLink.style.display = 'none';
+                        }
+                    } else {
+                        trackingLink.style.display = 'none';
+                    }
+                }
+            } catch(e) { /* silencioso */ }
             
             const footerEmailLinkElement = document.getElementById('footer-email-link');
             if (footerEmailLinkElement && contactInfo.email) {
@@ -3238,7 +3263,8 @@
             customerName: '',
             paymentMethod: '',
             changeAmount: '',
-            notes: ''
+            notes: '',
+            orderId: ''
         };
 
         // Parse variations from classificacaoAdicional
@@ -9937,7 +9963,7 @@
             }
         }
         // Send to WhatsApp or Webhook
-        function sendToWhatsApp() {
+        async function sendToWhatsApp() {
             if (cart.length === 0) return;
             
             // Get configuration data
@@ -9956,12 +9982,33 @@
                 debugLog('==============================');
             }
             
+            // Tracking integration (delivery only)
+            let generatedOrderId = null;
+            try {
+                const trackingEnabled = (typeof rastreioAtivo !== 'undefined' && rastreioAtivo === true);
+                if (trackingEnabled && orderData && orderData.deliveryType === 'delivery' && window.trackingUtils) {
+                    if (!orderData.orderId) {
+                        orderData.orderId = window.trackingUtils.generateOrderId();
+                    }
+                    generatedOrderId = orderData.orderId;
+                    try { localStorage.setItem('last_order_id', generatedOrderId); } catch(e) {}
+                    if (window.dataService && typeof window.dataService.ensureOrderInitialized === 'function') {
+                        await window.dataService.ensureOrderInitialized(generatedOrderId);
+                    }
+                }
+            } catch(trackingErr) {
+                if (typeof warnLog === 'function') warnLog('Rastreio: falha ao preparar ID', trackingErr);
+            }
+            
             // Get restaurant name and phone number from configuration
             const restaurantName = appConfig.nome_restaurante || "Cardápio Digital";
             const phoneNumber = contactInfo.whatsapp || "5519998021956";
             
             // Format the order message
-            const message = formatOrderMessage(restaurantName);
+            let message = formatOrderMessage(restaurantName);
+            if (generatedOrderId && window.trackingHooks && typeof window.trackingHooks.appendTrackingToMessage === 'function') {
+                message = window.trackingHooks.appendTrackingToMessage(message, generatedOrderId);
+            }
             if (typeof debugLog === 'function') {
                 debugLog('Formatted message:', message);
             }
@@ -10491,7 +10538,8 @@
                 tableNumber: '',
                 paymentMethod: '',
                 changeAmount: '',
-                notes: ''
+                notes: '',
+                orderId: ''
             };
             
             // 3. Reset taxa de delivery
@@ -13444,7 +13492,32 @@ if (document.readyState === 'loading') {
 }
 </script>
 
+<script src="/js/dataService.js"></script>
+<script src="/js/script.js"></script>
+<script>
+// === RASTREIO - CONTROLE DE ATIVAÇÃO ===
+// Se false, o recurso não aparece nem envia ID/link no WhatsApp
+const rastreioAtivo = true; // Altere para false para desativar completamente
 
+(function(){
+	try{
+		const trackingLink = document.getElementById('footer-tracking');
+		if(!trackingLink) return;
+		if(!rastreioAtivo){
+			trackingLink.style.display = 'none';
+			return;
+		}
+		// Exibir link se houver último pedido
+		const lastId = localStorage.getItem('last_order_id');
+		if(lastId){
+			trackingLink.href = `/rastreio.html?id=${encodeURIComponent(lastId)}`;
+			trackingLink.style.display = 'inline';
+		}else{
+			trackingLink.style.display = 'none';
+		}
+	}catch(e){ /* silencioso */ }
+})();
+</script>
 
 </body>
 </html>
