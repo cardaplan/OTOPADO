@@ -53,19 +53,14 @@
 			<div id="feedback" class="subtle-text" style="margin-top:12px;">—</div>
 		</section>
 
-		<!-- Pedidos disponíveis / aceitação -->
-		<section class="status-card" style="margin-top:16px;">
-			<div class="status-row" style="justify-content:space-between;">
-				<div class="status-title">Pedidos Disponíveis</div>
-				<button id="refresh-list" class="btn">Atualizar lista</button>
-			</div>
-			<div id="orders-list" class="orders-list"></div>
-		</section>
-
 		<!-- Histórico -->
 		<section class="status-card" style="margin-top:16px;">
 			<div class="status-row" style="justify-content:space-between;">
-				<div class="status-title">Histórico</div>
+				<div class="status-title">Histórico de Entregas</div>
+				<div class="search-row">
+					<input id="history-search" class="input" placeholder="Buscar ID no histórico" />
+					<button id="history-search-btn" class="btn">Pesquisar</button>
+				</div>
 			</div>
 			<div id="history-list" class="orders-list"></div>
 		</section>
@@ -185,37 +180,24 @@
 	}
 
 	async function renderOrders(){
-		const listEl = document.getElementById('orders-list');
 		const histEl = document.getElementById('history-list');
 		const orders = await window.dataService.listOrders();
-		// separar por data (hoje e anteriores)
-		const today = new Date(); today.setHours(0,0,0,0);
-		const todayOrders = orders.filter(o => new Date(o.createdAt) >= today);
-		const oldOrders = orders.filter(o => new Date(o.createdAt) < today);
-		listEl.innerHTML = todayOrders.map(orderCard).join('') || '<div class="subtle-text">Sem pedidos no momento</div>';
-		histEl.innerHTML = oldOrders.map(orderCard).join('') || '<div class="subtle-text">Sem histórico</div>';
-		// binds de aceitar
-		listEl.querySelectorAll('.accept-btn').forEach(btn => {
-			btn.addEventListener('click', async () => {
-				const id = btn.getAttribute('data-id');
-				try{
-					await window.dataService.acceptOrder(id, DELIVERER_ID);
-					showSuccess();
-					renderOrders();
-					openStatusModal(id);
-				} catch(e){ alert(e.message); }
-			});
-		});
+		// Filtrar apenas entregues
+		const delivered = orders.filter(o => !!o.deliveredAt);
+		histEl.innerHTML = delivered.map(orderCard).join('') || '<div class="subtle-text">Sem histórico</div>';
 	}
 
-	document.getElementById('refresh-list').addEventListener('click', renderOrders);
+	document.getElementById('refresh-list')?.addEventListener('click', renderOrders);
+	document.getElementById('history-search-btn').addEventListener('click', ()=>{
+		const q = (document.getElementById('history-search').value||'').trim().toLowerCase();
+		const histEl = document.getElementById('history-list');
+		if(!q){ renderOrders(); return; }
+		const nodes = Array.from(histEl.children);
+		nodes.forEach(n=> { n.style.display = n.textContent.toLowerCase().includes(q) ? '' : 'none'; });
+	});
 
 	// Listener de eventos (simula WebSocket) para atualizar listas automaticamente
-	window.addEventListener('storage', (ev) => {
-		if(ev.key === 'orders_event'){
-			renderOrders();
-		}
-	});
+	window.addEventListener('storage', (ev) => { if(ev.key === 'orders_event'){ renderOrders(); } });
 
 	// Seed demo e render inicial
 	window.dataService.seedDemoOrdersIfEmpty();
@@ -258,9 +240,11 @@
 		if(!modalOrderId || !modalSelectedStatus){ closeStatusModal(); return; }
 		try{
 			await window.dataService.updateOrderStatus(modalOrderId, modalSelectedStatus);
+			if(modalSelectedStatus === 'entregue'){
+				await window.dataService.markDelivered(modalOrderId, DELIVERER_ID);
+			}
 			showSuccess();
 			closeStatusModal();
-			// Se o ID buscado for o mesmo, refletir
 			if(document.getElementById('order-id').value.trim() === modalOrderId){
 				applyBadge(document.getElementById('current-status-badge'), modalSelectedStatus);
 				highlightSelected(modalSelectedStatus);
