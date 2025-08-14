@@ -160,7 +160,7 @@
 				return;
 			}
 			const data = await window.dataService.getOrderStatus(orderId);
-			const status = data?.status || 'confirmado';
+			const status = data?.status || 'criado';
 			const idx = statusToIndex(status);
 			applyVerticalTimeline(idx);
 			updateStatusLabel(status);

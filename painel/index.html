@@ -44,6 +44,7 @@
 			</div>
 
 			<div class="status-grid">
+				<button class="status-btn status-criado" data-status="criado">🕒<span>Pedido criado</span></button>
 				<button class="status-btn status-confirmado" data-status="confirmado">📦<span>Pedido confirmado</span></button>
 				<button class="status-btn status-preparacao" data-status="preparacao">👨‍🍳<span>Em preparação</span></button>
 				<button class="status-btn status-rota" data-status="rota">🚗<span>Saiu para entrega</span></button>
@@ -118,8 +119,12 @@
 		const feedback = document.getElementById('feedback');
 		if(!id){ feedback.textContent = 'Informe o ID do pedido.'; return; }
 		try{
-			const data = await window.dataService.getOrderStatus(id);
-			const status = data?.status || 'confirmado';
+			let data = await window.dataService.getOrderStatus(id);
+			if(!data){
+				// Inicializa pedido inexistente como 'criado'
+				data = await window.dataService.ensureOrderInitialized(id);
+			}
+			const status = data?.status || 'criado';
 			applyBadge(document.getElementById('current-status-badge'), status);
 			selectedStatus = status; highlightSelected(status);
 			feedback.textContent = 'Status carregado.';

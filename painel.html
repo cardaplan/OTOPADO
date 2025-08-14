@@ -37,6 +37,7 @@
 			</div>
 
 			<div class="status-grid">
+				<button class="status-btn status-criado" data-status="criado">🕒<span>Pedido criado</span></button>
 				<button class="status-btn status-confirmado" data-status="confirmado">📦<span>Pedido confirmado</span></button>
 				<button class="status-btn status-preparacao" data-status="preparacao">👨‍🍳<span>Em preparação</span></button>
 				<button class="status-btn status-rota" data-status="rota">🚗<span>Saiu para entrega</span></button>
@@ -96,7 +97,7 @@
 	function badgeFor(s){ const map = {confirmado:'📦 Pedido confirmado',preparacao:'👨‍🍳 Em preparação',rota:'🚗 Saiu para entrega',entregue:'✅ Entregue'}; return map[s]||'—'; }
 	function applyBadge(el, s){ el.textContent = badgeFor(s); el.className='status-badge'; if(s==='preparacao')el.classList.add('badge-preparacao'); if(s==='rota')el.classList.add('badge-rota'); if(s==='entregue')el.classList.add('badge-entregue'); }
 
-	async function loadStatus(){ const id=document.getElementById('order-id').value.trim(); const fb=document.getElementById('feedback'); if(!id){ fb.textContent='Informe o ID do pedido.'; return; } try{ const data=await window.dataService.getOrderStatus(id); const s=data?.status||'confirmado'; applyBadge(document.getElementById('current-status-badge'), s); selectedStatus=s; highlightSelected(s); fb.textContent='Status carregado.'; }catch(e){ fb.textContent='Falha ao carregar.'; } }
+	async function loadStatus(){ const id=document.getElementById('order-id').value.trim(); const fb=document.getElementById('feedback'); if(!id){ fb.textContent='Informe o ID do pedido.'; return; } try{ let data=await window.dataService.getOrderStatus(id); if(!data){ data=await window.dataService.ensureOrderInitialized(id); } const s=data?.status||'criado'; applyBadge(document.getElementById('current-status-badge'), s); selectedStatus=s; highlightSelected(s); fb.textContent='Status carregado.'; }catch(e){ fb.textContent='Falha ao carregar.'; } }
 	function highlightSelected(s){ document.querySelectorAll('.status-btn').forEach(b=> b.classList.toggle('selected', b.getAttribute('data-status')===s)); }
 	document.getElementById('load-btn').addEventListener('click', loadStatus);
 	document.getElementById('order-id').addEventListener('keydown', (e)=>{ if(e.key==='Enter'){ loadStatus(); }});
