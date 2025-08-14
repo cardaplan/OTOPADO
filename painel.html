@@ -8,15 +8,6 @@
 	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 	<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 	<link rel="stylesheet" href="/css/styles.css">
-	<!--
-		Painel do Entregador (Mobile-first)
-		- Busca por ID do pedido
-		- Exibe status atual
-		- Seleção por botões grandes com ícones
-		- Botão Salvar com animação
-		- Animação de sucesso (fade in/out)
-		- Pronto para backend real via dataService.js
-	-->
 </head>
 <body>
 	<header class="header-bar">
@@ -92,7 +83,7 @@
 			const data = await window.dataService.getOrderStatus(id);
 			const status = data?.status || 'confirmado';
 			applyBadge(document.getElementById('current-status-badge'), status);
-			selectedStatus = status; // pré-seleciona
+			selectedStatus = status;
 			highlightSelected(status);
 			feedback.textContent = 'Status carregado.';
 		}catch(e){

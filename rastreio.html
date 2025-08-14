@@ -3,111 +3,165 @@
 <head>
 	<meta charset="utf-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
-	<title>Rastreio do Pedido</title>
+	<title>Rastreamento do Pedido</title>
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 	<link rel="stylesheet" href="/css/styles.css">
-	<!-- Página de Rastreio do Cliente
-		Mostra status do pedido em 4 etapas + barra de progresso.
-		Busca dados de um "banco" simulado (localStorage) via dataService.js.
-		Trocar localStorage por API real quando disponível (ver comentários em dataService.js). -->
+	<!--
+		Rastreamento do Pedido (Cliente)
+		- Linha do tempo horizontal com 5 etapas
+		- Ponto piscante no status atual (animação @keyframes blink)
+		- Barra de progresso animada entre etapas
+		- Layout responsivo com Flex/Grid
+		- Atualização automática a cada 5s
+		- Pronto para backend real via dataService.js (localStorage por enquanto)
+	-->
 </head>
 <body>
-	<div class="container">
-		<header class="header">
-			<h1>📦 Rastreio do Pedido</h1>
-			<a class="btn" href="/">Voltar ao cardápio</a>
-		</header>
+	<header class="header-bar">
+		<div class="container header-inner">
+			<div class="header-left">
+				<span class="header-emoji">📦</span>
+				<h1 class="header-title">Rastreamento do Pedido</h1>
+			</div>
+			<div class="header-right">
+				<span id="order-code" class="order-code">#—</span>
+				<a class="btn" href="/">Voltar ao cardápio</a>
+			</div>
+		</div>
+	</header>
 
-		<section class="status-card" id="tracking-card" style="margin-top:16px;">
-			<div class="status-row">
+	<main class="container" style="padding-top:84px;">
+		<section class="status-card" style="overflow:hidden;">
+			<div class="status-row" style="align-items:flex-start;">
 				<div>
-					<div class="status-title">Pedido <span id="order-id">...</span></div>
-					<div id="status-friendly" class="status-badge badge-confirmado">Carregando status...</div>
+					<div class="status-title">Acompanhe o progresso</div>
+					<div id="status-friendly" class="status-badge">Carregando...</div>
 				</div>
 				<button id="refresh-btn" class="btn" title="Atualizar agora">⟳ Atualizar</button>
 			</div>
 
-			<div class="progress" style="margin-top:14px;">
-				<div class="step"><div class="fill" id="p1"></div></div>
-				<div class="step"><div class="fill" id="p2"></div></div>
-				<div class="step"><div class="fill" id="p3"></div></div>
-				<div class="step"><div class="fill" id="p4"></div></div>
+			<!-- Linha do tempo -->
+			<div class="timeline">
+				<div class="timeline-track"></div>
+				<div id="timeline-progress" class="timeline-progress"></div>
+				<div id="timeline-indicator" class="timeline-indicator blinking"></div>
+				<div class="timeline-steps">
+					<div class="timeline-step" data-step="0">
+						<div class="step-icon">🕒</div>
+						<div class="step-label">Pedido criado</div>
+					</div>
+					<div class="timeline-step" data-step="1">
+						<div class="step-icon">📦</div>
+						<div class="step-label">Pedido confirmado</div>
+					</div>
+					<div class="timeline-step" data-step="2">
+						<div class="step-icon">👨‍🍳</div>
+						<div class="step-label">Em preparação</div>
+					</div>
+					<div class="timeline-step" data-step="3">
+						<div class="step-icon">🚗</div>
+						<div class="step-label">Saiu para entrega</div>
+					</div>
+					<div class="timeline-step" data-step="4">
+						<div class="step-icon">✅</div>
+						<div class="step-label">Entregue</div>
+					</div>
+				</div>
 			</div>
 
-			<div class="steps-legend">
-				<div id="l1" class="legend-item">📦 Pedido confirmado</div>
-				<div id="l2" class="legend-item">👨‍🍳 Em preparação</div>
-				<div id="l3" class="legend-item">🚗💨 Saiu para entrega</div>
-				<div id="l4" class="legend-item">✅ Entregue</div>
-			</div>
+			<div id="last-updated" class="subtle-text" style="margin-top:12px;">—</div>
 		</section>
-
-		<p style="margin-top:16px; color:#6b7280;">
-			Esta página atualiza automaticamente a cada 5 segundos para simular tempo real.
-		</p>
-	</div>
+	</main>
 
 	<script src="/js/dataService.js"></script>
 	<script src="/js/script.js"></script>
 	<script>
-	// Capturar ID do pedido da URL
-	const orderId = trackingUtils.getQueryParam('id');
-	document.getElementById('order-id').textContent = orderId || '—';
-
-	const fills = [
-		document.getElementById('p1'),
-		document.getElementById('p2'),
-		document.getElementById('p3'),
-		document.getElementById('p4')
-	];
-	const legends = [
-		document.getElementById('l1'),
-		document.getElementById('l2'),
-		document.getElementById('l3'),
-		document.getElementById('l4')
-	];
-
-	const statusMap = {
-		confirmado: { idx: 1, label: '📦 Pedido confirmado', badgeClass: 'badge-confirmado', color: getComputedStyle(document.documentElement).getPropertyValue('--status-azul') },
-		preparacao: { idx: 2, label: '👨‍🍳 Em preparação', badgeClass: 'badge-preparacao', color: getComputedStyle(document.documentElement).getPropertyValue('--status-laranja') },
-		rota:       { idx: 3, label: '🚗💨 Saiu para entrega', badgeClass: 'badge-rota', color: getComputedStyle(document.documentElement).getPropertyValue('--status-amarelo') },
-		entregue:   { idx: 4, label: '✅ Entregue', badgeClass: 'badge-entregue', color: getComputedStyle(document.documentElement).getPropertyValue('--status-verde') }
+	// Mapeamento de status → índice da linha do tempo
+	const STEP_IDS = ['criado','confirmado','preparacao','rota','entregue'];
+	const STEP_COLORS = {
+		criado: '#9CA3AF', // cinza
+		confirmado: '#6366F1', // indigo (neutro elegante)
+		preparacao: getComputedStyle(document.documentElement).getPropertyValue('--status-laranja').trim() || '#ff8c00',
+		rota: getComputedStyle(document.documentElement).getPropertyValue('--status-azul').trim() || '#2d89ef',
+		entregue: getComputedStyle(document.documentElement).getPropertyValue('--status-verde').trim() || '#22c55e'
 	};
 
-	function resetProgress(){
-		fills.forEach(f => { f.style.width = '0%'; f.style.background = '#e5e7eb'; });
-		legends.forEach(l => l.classList.remove('active'));
+	const orderId = trackingUtils.getQueryParam('id');
+	document.getElementById('order-code').textContent = orderId ? `#${orderId}` : '#—';
+
+	function statusToIndex(status){
+		switch(status){
+			case 'confirmado': return 1;
+			case 'preparacao': return 2;
+			case 'rota': return 3;
+			case 'entregue': return 4;
+			default: return 0; // criado
+		}
 	}
 
-	function applyStatusProgress(status){
-		resetProgress();
-		const meta = statusMap[status] || statusMap.confirmado;
-		const stepsFilled = meta.idx;
-		for(let i=0;i<stepsFilled;i++){
-			fills[i].style.width = '100%';
-			fills[i].style.background = meta.color || '#111827';
-			legends[i].classList.add('active');
-		}
-		const statusEl = document.getElementById('status-friendly');
-		statusEl.textContent = meta.label;
-		statusEl.className = 'status-badge ' + meta.badgeClass;
+	function indexToStatus(idx){
+		return STEP_IDS[idx] || 'criado';
+	}
+
+	function labelForStatus(status){
+		const map = {
+			criado: '🕒 Pedido criado',
+			confirmado: '📦 Pedido confirmado',
+			preparacao: '👨‍🍳 Em preparação',
+			rota: '🚗 Saiu para entrega',
+			entregue: '✅ Entregue'
+		};
+		return map[status] || '—';
+	}
+
+	function applyTimeline(index){
+		const total = STEP_IDS.length - 1;
+		const percent = Math.max(0, Math.min(100, (index/total)*100));
+		const currentStatus = indexToStatus(index);
+		const color = STEP_COLORS[currentStatus] || '#111827';
+
+		const progress = document.getElementById('timeline-progress');
+		const indicator = document.getElementById('timeline-indicator');
+		progress.style.width = percent + '%';
+		progress.style.background = color;
+		indicator.style.left = percent + '%';
+		indicator.style.background = color;
+
+		// Atualizar classes das etapas
+		document.querySelectorAll('.timeline-step').forEach((el) => {
+			const stepIdx = Number(el.getAttribute('data-step'));
+			el.classList.toggle('completed', stepIdx < index);
+			el.classList.toggle('current', stepIdx === index);
+		});
+	}
+
+	function updateStatusLabel(status){
+		const el = document.getElementById('status-friendly');
+		el.textContent = labelForStatus(status);
+		el.className = 'status-badge';
+		if(status === 'preparacao') el.classList.add('badge-preparacao');
+		if(status === 'rota') el.classList.add('badge-rota');
+		if(status === 'entregue') el.classList.add('badge-entregue');
 	}
 
 	async function refresh(){
-		if(!orderId){
-			document.getElementById('status-friendly').textContent = 'ID de pedido não informado.';
-			return;
-		}
 		try{
-			// SIMULAÇÃO: leitura via localStorage
-			// Trocar por chamada de API quando disponível (ver dataService.js)
-			const data = await window.dataService.getOrderStatus(orderId);
-			if(!data){
-				applyStatusProgress('confirmado');
+			if(!orderId){
+				updateStatusLabel('criado');
+				applyTimeline(0);
+				document.getElementById('last-updated').textContent = 'ID de pedido não informado.';
 				return;
 			}
-			applyStatusProgress(data.status);
-		}catch(err){
-			console.error(err);
+			const data = await window.dataService.getOrderStatus(orderId);
+			const status = data?.status || 'confirmado';
+			const idx = statusToIndex(status);
+			applyTimeline(idx);
+			updateStatusLabel(status);
+			document.getElementById('last-updated').textContent = 'Atualizado em ' + new Date().toLocaleTimeString();
+		}catch(e){
+			console.error(e);
 		}
 	}
 
