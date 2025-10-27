@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>Rastreamento do Pedido</title>
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+	<link rel="stylesheet" href="./css/styles.css">
+	<!--
+		Rastreamento do Pedido (Cliente)
+		- Linha do tempo vertical com 5 etapas
+		- Ponto piscante no status atual (animação @keyframes blink)
+		- Transições animadas
+		- Layout responsivo com Flex/Grid
+		- Atualização automática e listener de "tempo real" (localStorage event)
+		- Pronto para backend real via dataService.js (localStorage por enquanto)
+	-->
+<script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-futuristic">
+	<header class="header-bar">
+		<div class="container header-inner">
+			<div class="header-left">
+				<span class="header-emoji">📦</span>
+				<h1 class="header-title">Rastreamento do Pedido</h1>
+			</div>
+			<div class="header-right">
+				<span id="order-code" class="order-code">#—</span>
+				<a class="btn" href="/">Voltar ao cardápio</a>
+			</div>
+		</div>
+	</header>
+
+	<main class="container" style="padding-top:84px;">
+		<section class="status-card" style="overflow:hidden;">
+			<div class="status-row" style="align-items:flex-start;">
+				<div>
+					<div class="status-title">Acompanhe o progresso</div>
+					<div id="status-friendly" class="status-badge">Carregando...</div>
+				</div>
+				<button id="refresh-btn" class="btn" title="Atualizar agora">⟳ Atualizar</button>
+			</div>
+
+			<!-- Timeline Vertical -->
+			<div class="v-timeline">
+				<div class="v-line"></div>
+				<div id="v-indicator" class="v-indicator blinking"></div>
+
+				<div class="v-step" data-step="0">
+					<div class="v-dot">🕒</div>
+					<div class="v-meta">
+						<div class="v-title">Pedido criado</div>
+						<div class="v-chip v-chip-gray">Aguardando</div>
+					</div>
+				</div>
+				<div class="v-step" data-step="1">
+					<div class="v-dot">📦</div>
+					<div class="v-meta">
+						<div class="v-title">Pedido confirmado</div>
+						<div class="v-chip v-chip-indigo">Confirmado</div>
+					</div>
+				</div>
+				<div class="v-step" data-step="2">
+					<div class="v-dot">👨‍🍳</div>
+					<div class="v-meta">
+						<div class="v-title">Em preparação</div>
+						<div class="v-chip v-chip-orange">Preparando</div>
+					</div>
+				</div>
+				<div class="v-step" data-step="3">
+					<div class="v-dot">🚗</div>
+					<div class="v-meta">
+						<div class="v-title">Saiu para entrega</div>
+						<div class="v-chip v-chip-blue">A caminho</div>
+					</div>
+				</div>
+				<div class="v-step" data-step="4">
+					<div class="v-dot">✅</div>
+					<div class="v-meta">
+						<div class="v-title">Entregue</div>
+						<div class="v-chip v-chip-green">Concluído</div>
+					</div>
+				</div>
+			</div>
+
+			<div id="last-updated" class="subtle-text" style="margin-top:12px;">—</div>
+		</section>
+	</main>
+
+	<script src="/js/dataService.js"></script>
+	<script src="/js/script.js"></script>
+	<script>
+	const STEP_IDS = ['criado','confirmado','preparacao','rota','entregue'];
+	const STEP_COLORS = {
+		criado: '#9CA3AF',
+		confirmado: '#6366F1',
+		preparacao: getComputedStyle(document.documentElement).getPropertyValue('--status-laranja').trim() || '#ff8c00',
+		rota: getComputedStyle(document.documentElement).getPropertyValue('--status-azul').trim() || '#2d89ef',
+		entregue: getComputedStyle(document.documentElement).getPropertyValue('--status-verde').trim() || '#22c55e'
+	};
+
+	const orderId = trackingUtils.getQueryParam('id');
+	document.getElementById('order-code').textContent = orderId ? `#${orderId}` : '#—';
+
+	function statusToIndex(status){
+		switch(status){
+			case 'confirmado': return 1;
+			case 'preparacao': return 2;
+			case 'rota': return 3;
+			case 'entregue': return 4;
+			default: return 0;
+		}
+	}
+
+	function labelForStatus(status){
+		const map = {
+			criado: '🕒 Pedido criado',
+			confirmado: '📦 Pedido confirmado',
+			preparacao: '👨‍🍳 Em preparação',
+			rota: '🚗 Saiu para entrega',
+			entregue: '✅ Entregue'
+		};
+		return map[status] || '—';
+	}
+
+	function applyVerticalTimeline(index){
+		const indicator = document.getElementById('v-indicator');
+		const steps = document.querySelectorAll('.v-step');
+		const container = document.querySelector('.v-timeline');
+		const total = STEP_IDS.length - 1;
+		const stepPercent = 100 / total;
+		const topPercent = Math.max(0, Math.min(100, index * stepPercent));
+		const currentStatus = STEP_IDS[index] || 'criado';
+		const color = STEP_COLORS[currentStatus] || '#111827';
+		indicator.style.top = `calc(${topPercent}% + 24px)`;
+		indicator.style.background = color;
+		steps.forEach((el, idx) => {
+			el.classList.toggle('completed', idx < index);
+			el.classList.toggle('current', idx === index);
+		});
+	}
+
+	function updateStatusLabel(status){
+		const el = document.getElementById('status-friendly');
+		el.textContent = labelForStatus(status);
+		el.className = 'status-badge';
+		if(status === 'preparacao') el.classList.add('badge-preparacao');
+		if(status === 'rota') el.classList.add('badge-rota');
+		if(status === 'entregue') el.classList.add('badge-entregue');
+	}
+
+	async function refresh(){
+		try{
+			if(!orderId){
+				updateStatusLabel('criado');
+				applyVerticalTimeline(0);
+				document.getElementById('last-updated').textContent = 'ID de pedido não informado.';
+				return;
+			}
+			const data = await window.dataService.getOrderStatus(orderId);
+			const status = data?.status || 'criado';
+			const idx = statusToIndex(status);
+			applyVerticalTimeline(idx);
+			updateStatusLabel(status);
+			document.getElementById('last-updated').textContent = 'Atualizado em ' + new Date().toLocaleTimeString();
+		}catch(e){ console.error(e); }
+	}
+
+	// Listener "tempo real" via localStorage events (simula WebSocket)
+	window.addEventListener('storage', (ev) => {
+		if(ev.key === 'orders_event'){
+			try{
+				const payload = JSON.parse(ev.newValue || '{}');
+				if(payload?.event === 'status_updated' && payload?.payload?.id === orderId){
+					refresh();
+				}
+			}catch(e){}
+		}
+	});
+
+	document.getElementById('refresh-btn').addEventListener('click', refresh);
+	refresh();
+	</script>
+</body>
+</html>
